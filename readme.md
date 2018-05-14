@@ -1,0 +1,2 @@
+# Patch's Sippets
+*A toolbox of assorted python scripts and other smallish projects best used if you're me, but reproduced here in the interest of fairness. The scripts have been curated for the convenience of all involved.*
