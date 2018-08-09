@@ -11,7 +11,7 @@ def statusprint(jobsDone, sumJobs): # adapted from Tapestry, which was adapted f
     lengthBar = 15.0
     doneBar = int(round((jobsDone/sumJobs)*lengthBar))
     doneBarPrint = str("#"*int(doneBar)+"-"*int(round((lengthBar-doneBar))))
-    percent = float((jobsDone/sumJobs)*100)
+    percent = int((jobsDone/sumJobs)*100)
     text = ("\r{0}: [{1}] {2}%" .format("Parsing", doneBarPrint, percent))
     sys.stdout.write(text)
     sys.stdout.flush()
