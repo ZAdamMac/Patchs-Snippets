@@ -1,4 +1,29 @@
-# Pentesting Scripts Usage
+# Data Management Scripts Usage
+
+###csvscrub.py
+### Configuration
+`csvscrub.cfg` is a text file in the cwd of the script, formatted thusly:
+```INI
+[$Header]
+scrub: boolean
+scrubbed value: string
+map: boolean
+```
+where:
+- $HEADER is the name of a header in row one of the csv
+- scrub determines whether or not to scrub the values in this column.
+- scrubbed value is the strong with which to replace the original data.
+- map is a boolean controlling Mapped Scrub Mode
+
+If Mapped Scrub Mode is `True` for a particular column, values under that column will be indexed and modified accodingly, replaced with the string `$HEADER-$INDEX`. `%s` in a scrubbed value string will be replaced with the value of a counter that advances each row parsed - a space must exist on either side of the symbol and only one such symbol may be provided
+
+
+#### Usage
+Preconfigure the headers you want to modify into the config file, run the script, and enter the path to the file you wish to scrub.
+
+#### Limitations
+Header data is required in both the csv and the config file. If data for a given header is missing, it will be skipped.
+
 
 ### sqlizer.py
 #### Configuration
