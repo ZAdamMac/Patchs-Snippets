@@ -6,10 +6,13 @@ import configparser  # needed to fetch the parsing instructions
 import csv  # needed because we're dealing with csvs.
 import sys  # needed so I don't have to reinvent statusprint
 
+#Set the encoding of the input CSVs used.
+enc = "cp1252"  # At present I have a need for this, but if you don't need it, set the value to none
+
 # Define Classes
 class header(object):  # Little object we can predefine config values for elegance
     def __init__(self, name):
-        self.name = str(name).lower()
+        self.name = str(name)
         self.scrub = False
         self.scrubbed = "0xdeadbeef"  # Could be any value, not used by default.
         self.indexed = False
@@ -20,8 +23,9 @@ class header(object):  # Little object we can predefine config values for elegan
         self.indexed = cfg.getboolean(self.name, "map")
         if self.indexed:
             self.dictIndex = {}  # Used for "Mapped Scrub"
-        else:
-            self.scrubbed = cfg.get(self.name, "scrubbed value")
+        self.scrubbed = cfg.get(self.name, "scrubbed value")
+        if self.scrubbed == "%blank%":
+            self.scrubbed = None
 
 # Define Functions
 
@@ -43,12 +47,12 @@ def scrub(header):  # expects the relevant header object
     return valueNew
 
 def indexedScrub(header, value):  # expects the babysitter function to hand it the right object
-    if str(value).lower() not in header.dictIndex:
+    if str(value) not in header.dictIndex:
         indexNum = str(header.counter)
-        header.dictIndex.update({str(value).lower(): indexNum})
+        header.dictIndex.update({str(value): indexNum})
         header.counter += 1
 
-    indexNum = header.dictIndex[str(value).lower()]
+    indexNum = header.dictIndex[str(value)]
     try:
         valueNew = (header.scrubbed % indexNum)
     except TypeError:  # For Mapped Scrub, a %s replace MUST be included in the scrubbed value or it don't work.
@@ -56,12 +60,12 @@ def indexedScrub(header, value):  # expects the babysitter function to hand it t
         exit()
     return valueNew
 
-def statusprint(jobsDone, sumJobs): # adapted from Tapestry, which was adapted from somewhere else.
+def statusprint(file, jobsDone, sumJobs): # adapted from Tapestry, which was adapted from somewhere else.
     lengthBar = 30.0
     doneBar = int(round((jobsDone/sumJobs)*lengthBar))
     doneBarPrint = str("#"*int(doneBar)+"-"*int(round((lengthBar-doneBar))))
     percent = int((jobsDone/sumJobs)*100)
-    text = ("\r{0}: [{1}] {2}%" .format("Parsing", doneBarPrint, percent))
+    text = ("\r{0}: [{1}] {2}%" .format(file, doneBarPrint, percent))
     sys.stdout.write(text)
     sys.stdout.flush()
 
@@ -71,7 +75,7 @@ parser.add_argument('files', help="Fully-Qualified path to files, space-seperate
 args = parser.parse_args()
 listFiles = args.files
 
-conf = configparser.ConfigParser()
+conf = configparser.ConfigParser(interpolation=None)
 conf.read('csvscrub.cfg')
 
 #  Predefine Runtime
@@ -79,35 +83,43 @@ rules = initHeaders(conf)
 print("csvscrub will now attempt to scrub these files: "+str(listFiles))
 for file in listFiles:
     print("\nNow scrubbing "+str(file))
-    with open(file, "r") as data:
-        with open(file, "r") as f:
+    with open(file, "r", encoding=enc) as data:
+        with open(file, "r", encoding=enc) as f:
+            thisDialect = csv.Sniffer().sniff(f.readline())
+        with open(file, "r", encoding=enc) as f:
             sumLines = 0
             for l in f:
                 sumLines += 1
             sumLines -= 1 # because we can ignore the header.
-        with csv.DictReader(data,dialect=csv.Sniffer().sniff(data)) as reader:
-            linesDone = 0
-            statusprint(linesDone, sumLines)
-            headersObserved = reader.fieldnames
-            scrubbedLinesFeed = []
-            for line in reader:
-                scrubbedLine = {}
-                for i in line.items():
-                    try:
-                        useHeader = None
-                        useHeader = rules[str(i[0]).lower]
-                    except KeyError:  # if a given column isn't in the dictionary, default is to ignore.
-                        scrubbedLine.update({i[0]: i[1]})
-                    if useHeader is not None:
-                        if useHeader.indexed:
-                            newvalue = indexedScrub(useHeader, i[1])
-                        else:
-                            newvalue = scrub(useHeader)
-                        scrubbedLine.update({i[0]: newvalue})
-                scrubbedLinesFeed.append(scrubbedLine)
-                linesDone += 1
-                statusprint(linesDone, sumLines)
-            with open(("scrubbed_"+file), "w") as output:
-                with csv.DictWriter(output, dialect="excel", fieldnames=headersObserved) as writer:
-                    writer.writeheader()
-                    writer.writerows(scrubbedLinesFeed)
+        reader = csv.DictReader(data, dialect=thisDialect)
+        linesDone = 0
+        statusprint(file, linesDone, sumLines)
+        headersObserved = reader.fieldnames
+        scrubbedLinesFeed = []
+        for line in reader:
+            scrubbedLine = {}
+            for i in line.items():
+                useHeader = None
+                try:
+                    useHeader = rules[str(i[0])]
+                except KeyError:  # if a given column isn't in the dictionary, default is to ignore.
+                    scrubbedLine.update({i[0]: i[1]})
+                if useHeader is None:
+                    useHeader = header("foo")  # Headers have scrub = False by default, so we just need a throwaway.
+                if useHeader.scrub:
+                    if useHeader.indexed:
+                        newvalue = indexedScrub(useHeader, i[1])
+                    else:
+                        newvalue = scrub(useHeader)
+                    scrubbedLine.update({i[0]: newvalue})
+                else:
+                    scrubbedLine.update({i[0]: i[1]})
+            scrubbedLinesFeed.append(scrubbedLine)
+            linesDone += 1
+            statusprint(file, linesDone, sumLines)
+        with open(("scrubbed_"+file), "w") as output:
+            print("Saving converted file to CWD.")
+            writer = csv.DictWriter(output, dialect="excel", fieldnames=headersObserved)
+            writer.writeheader()
+            writer.writerows(scrubbedLinesFeed)
+            print("Done.")
