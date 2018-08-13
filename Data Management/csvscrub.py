@@ -8,6 +8,7 @@ import sys  # needed so I don't have to reinvent statusprint
 
 #Set the encoding of the input CSVs used.
 enc = "cp1252"  # At present I have a need for this, but if you don't need it, set the value to none
+out = "utf-8"
 
 # Define Classes
 class header(object):  # Little object we can predefine config values for elegance
@@ -117,7 +118,7 @@ for file in listFiles:
             scrubbedLinesFeed.append(scrubbedLine)
             linesDone += 1
             statusprint(file, linesDone, sumLines)
-        with open(("scrubbed_"+file), "w") as output:
+        with open(("scrubbed_"+file), "w", encoding=out) as output:
             print("Saving converted file to CWD.")
             writer = csv.DictWriter(output, dialect="excel", fieldnames=headersObserved)
             writer.writeheader()

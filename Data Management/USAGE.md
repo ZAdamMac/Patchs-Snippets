@@ -17,6 +17,8 @@ where:
 
 If Mapped Scrub Mode is `True` for a particular column, values under that column will be indexed and modified accodingly, replaced with the string `$HEADER-$INDEX`. `%s` in a scrubbed value string will be replaced with the value of a counter that advances each row parsed - a space must exist on either side of the symbol and only one such symbol may be provided
 
+**A note on encoding**: by default, both input and output as the `locale.getpreferredencoding()` return - that is, the system default. Modify lines 10 and 11 accordingly if other values are needed. If you want to always use the defaults, set those values to None, or comment out the lines. 
+
 
 #### Usage
 Preconfigure the headers you want to modify into the config file, run the script, and enter the path to the file you wish to scrub.
