@@ -6,7 +6,7 @@ import configparser  # needed to fetch the parsing instructions
 import csv  # needed because we're dealing with csvs.
 import sys  # needed so I don't have to reinvent statusprint
 
-#Set the encoding of the input CSVs used.
+# Set the encoding of the input CSVs used.
 enc = "cp1252"  # At present I have a need for this, but if you don't need it, set the value to none
 out = "utf-8"
 
@@ -17,11 +17,13 @@ class header(object):  # Little object we can predefine config values for elegan
         self.scrub = False
         self.scrubbed = "0xdeadbeef"  # Could be any value, not used by default.
         self.indexed = False
+        self.delete = False
 
     def parse(self, cfg):  # Expects a read-in configparser object
         self.counter = 0  # Per-header counter.
         self.scrub = cfg.getboolean(self.name, "scrub")
         self.indexed = cfg.getboolean(self.name, "map")
+        self.delete = cfg.getboolean(self.name, "delete")
         if self.indexed:
             self.dictIndex = {}  # Used for "Mapped Scrub"
         self.scrubbed = cfg.get(self.name, "scrubbed value")
@@ -70,6 +72,16 @@ def statusprint(file, jobsDone, sumJobs): # adapted from Tapestry, which was ada
     sys.stdout.write(text)
     sys.stdout.flush()
 
+def scrubColumns(headers_observed, tup_headers):
+    for nameColumn in headers_observed:
+        try:
+            rule = tup_headers[nameColumn]
+        except KeyError:
+            continue
+        if rule.delete:
+            headers_observed.remove(nameColumn)
+    return headers_observed
+
 # Pre-Runtime Initialization
 parser = argparse.ArgumentParser(description="Automatically sanitize a given csv according to the values in csvscrub.cfg")
 parser.add_argument('files', help="Fully-Qualified path to files, space-seperated", nargs='+', type=str, action="store") #  Set nargs to + to indicate an arbitrary number >0 expected.
@@ -107,7 +119,9 @@ for file in listFiles:
                     scrubbedLine.update({i[0]: i[1]})
                 if useHeader is None:
                     useHeader = header("foo")  # Headers have scrub = False by default, so we just need a throwaway.
-                if useHeader.scrub:
+                if useHeader.delete:
+                    pass
+                elif useHeader.scrub:
                     if useHeader.indexed:
                         newvalue = indexedScrub(useHeader, i[1])
                     else:
@@ -120,7 +134,7 @@ for file in listFiles:
             statusprint(file, linesDone, sumLines)
         with open(("scrubbed_"+file), "w", encoding=out) as output:
             print("Saving converted file to CWD.")
-            writer = csv.DictWriter(output, dialect="excel", fieldnames=headersObserved)
+            writer = csv.DictWriter(output, dialect="excel", fieldnames= scrubColumns(reader.fieldnames, rules))
             writer.writeheader()
             writer.writerows(scrubbedLinesFeed)
             print("Done.")

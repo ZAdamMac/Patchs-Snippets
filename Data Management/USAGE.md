@@ -6,6 +6,7 @@
 ```INI
 [$Header]
 scrub: boolean
+delete: true
 scrubbed value: string
 map: boolean
 ```
@@ -14,6 +15,7 @@ where:
 - scrub determines whether or not to scrub the values in this column.
 - scrubbed value is the strong with which to replace the original data.
 - map is a boolean controlling Mapped Scrub Mode
+- if delete is set, the whole column will be excised from the scrubbed record.
 
 If Mapped Scrub Mode is `True` for a particular column, values under that column will be indexed and modified accodingly, replaced with the string `$HEADER-$INDEX`. `%s` in a scrubbed value string will be replaced with the value of a counter that advances each row parsed - a space must exist on either side of the symbol and only one such symbol may be provided
 
